@@ -1,0 +1,15 @@
+{
+  "name": "sinket-vps-sandbox",
+  "version": "4.0.0",
+  "description": "Sinket VPS Panel for CodeSandbox",
+  "main": "server.js",
+  "scripts": {
+    "start": "bash setup.sh && node server.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.0.3",
+    "express": "^4.18.2",
+    "ngrok": "^5.0.0-beta.2",
+    "cors": "^2.8.5"
+  }
+}
