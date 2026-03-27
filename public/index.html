@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sinket VPS Panel - Sandbox Edition</title>
+    <link href="https://fonts.cdnfonts.com/css/sf-pro-display" rel="stylesheet">
+    <link href="https://fonts.cdnfonts.com/css/sf-mono" rel="stylesheet">
+    <style>
+        :root {
+            --bg-nav: #1c1c1e; --bg-card: #2c2c2e; --bg-main: #121212;
+            --text-main: #f5f5f7; --text-muted: #86868b;
+            --accent: #30d158; --border: #38383a; --danger: #ff453a; --blue: #0a84ff;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'SF Pro Display', sans-serif; }
+        body { background: var(--bg-main); color: var(--text-main); display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+        .top-nav { height: 60px; background: var(--bg-nav); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; z-index: 1000; }
+        .brand { font-size: 20px; font-weight: 800; color: #fff; text-transform: uppercase; letter-spacing: 1px; }
+        .top-nav-right { display: flex; align-items: center; gap: 15px; }
+
+        .main-container { display: flex; flex: 1; overflow: hidden; }
+        .mobile-menu-icon { display: none; cursor: pointer; color: #fff; font-size: 24px; }
+
+        .sidebar { width: 220px; background: var(--bg-nav); border-right: 1px solid var(--border); padding: 20px 10px; display: flex; flex-direction: column; transition: transform 0.3s; }
+        .nav-item { display: flex; align-items: center; padding: 12px 15px; margin: 5px 0; border-radius: 8px; cursor: pointer; color: var(--text-muted); font-size: 15px; transition: 0.3s; }
+        .nav-item:hover { background: rgba(255,255,255,0.05); color: #fff; }
+        .nav-item.active { background: rgba(48, 209, 88, 0.15); color: var(--accent); font-weight: 600; }
+        .nav-icon { margin-right: 12px; font-size: 18px; }
+
+        .content-area { flex: 1; overflow-y: auto; padding: 25px; }
+        .section { display: none; animation: fadeIn 0.4s; }
+        .section.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+
+        .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 25px; }
+        .puffer-card { background: var(--bg-card); border-radius: 12px; border: 1px solid var(--border); padding: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+        .puffer-card h3 { font-size: 13px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 15px; }
+        .puffer-card-value { font-size: 34px; font-weight: 700; color: #fff; text-transform: uppercase; }
+
+        .input-group { margin-bottom: 20px; }
+        .input-label { display: block; font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; }
+        .input-field { width: 100%; padding: 12px 15px; background: #000; border: 1px solid var(--border); border-radius: 10px; color: #fff; font-size: 14px; outline: none; }
+        .input-field:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(48, 209, 88, 0.2); }
+        
+        .btn { padding: 12px 24px; border-radius: 10px; border: none; font-size: 14px; font-weight: 600; cursor: pointer; color: #fff; transition: 0.2s; }
+        .btn-primary { background: linear-gradient(135deg, var(--accent), #248a3d); }
+        .btn-primary:hover { transform: scale(1.02); }
+        .btn-danger { background: linear-gradient(135deg, var(--danger), #b33a32); }
+        .btn-blue { background: linear-gradient(135deg, var(--blue), #0056b3); }
+
+        .terminal-window { background: #050505; border-radius: 10px; border: 1px solid #333; height: 60vh; min-height: 400px; font-family: 'SF Mono', monospace; padding: 20px; color: #0f0; overflow-y: auto; font-size: 13px; line-height: 1.6; box-shadow: inset 0 0 10px rgba(0,0,0,0.8); }
+        .term-input-row { display: flex; gap: 10px; margin-top: 15px; align-items: center; }
+        .term-input { flex: 1; background: transparent; border: none; color: #fff; font-family: 'SF Mono', monospace; outline: none; font-size: 14px; }
+        .terminal-output-stream { color: #fff; white-space: pre-wrap; font-family: 'SF Mono', monospace; word-wrap: break-word; }
+
+        .puffer-table-container { border: 1px solid var(--border); border-radius: 10px; overflow-x: auto; margin-top: 20px; background: var(--bg-card); -webkit-overflow-scrolling: touch; }
+        .puffer-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 800px; }
+        .puffer-table th { text-align: left; padding: 15px; border-bottom: 1px solid var(--border); color: var(--text-muted); text-transform: uppercase; font-size: 11px; white-space: nowrap; }
+        .puffer-table td { padding: 15px; border-bottom: 1px solid #222; white-space: nowrap; }
+        .link-text { color: var(--accent); text-decoration: none; font-weight: bold; background: rgba(48,209,88,0.1); padding: 5px 10px; border-radius: 5px; }
+
+        .hidden { display: none; }
+
+        @media (max-width: 768px) {
+            .mobile-menu-icon { display: block; }
+            .sidebar { position: absolute; top: 60px; left: -220px; bottom: 0; z-index: 100; }
+            .sidebar.open { left: 0; }
+            .content-area { padding: 15px; }
+            .card-grid { grid-template-columns: 1fr; }
+            .top-nav-right { display: none; }
+            .terminal-window { height: 50vh; }
+        }
+
+        .login-overlay { position: fixed; inset: 0; background: var(--bg-main); display: flex; align-items: center; justify-content: center; z-index: 9999; }
+        .login-box { background: var(--bg-card); border-radius: 15px; padding: 40px; width: 380px; text-align: center; border: 1px solid var(--border); }
+        #toast { position: fixed; bottom: 30px; right: 30px; background: rgba(0,0,0,0.9); border: 1px solid var(--accent); color: #fff; padding: 15px 25px; border-radius: 10px; transform: translateX(350px); transition: 0.4s; z-index: 10000; }
+        #toast.show { transform: translateX(0); }
+    </style>
+</head>
+<body>
+
+    <div class="login-overlay" id="loginScreen">
+        <div class="login-box">
+            <h1 style="font-weight: 800; color: #fff; margin-bottom: 30px;">Sinket VPS</h1>
+            <div class="input-group"><input type="text" class="input-field" id="username" placeholder="Username"></div>
+            <div class="input-group"><input type="password" class="input-field" id="password" placeholder="Password"></div>
+            <button class="btn btn-primary" style="width: 100%;" onclick="login()">Access Sandbox</button>
+        </div>
+    </div>
+
+    <div id="toast">Operation successful!</div>
+
+    <div class="top-nav">
+        <span class="mobile-menu-icon" onclick="toggleMenu()">☰</span>
+        <div class="brand">Sinket VPS</div>
+        <div class="top-nav-right">
+            <span style="color:var(--text-muted)">CodeSandbox Edition</span>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <div class="sidebar" id="sidebar">
+            <div class="nav-item active" onclick="switchTab('dashboard', this)"><span class="nav-icon">📊</span>Dashboard</div>
+            <div class="nav-item" onclick="switchTab('terminal', this)"><span class="nav-icon">💻</span>Terminal</div>
+            <div class="nav-item" onclick="switchTab('vps', this)"><span class="nav-icon">🖥️</span>VPS Users</div>
+            <div class="nav-item" onclick="switchTab('hosting', this)"><span class="nav-icon">🌐</span>Web Hosting</div>
+            <div style="margin-top: auto;"></div>
+            <div class="nav-item" style="border: 1px solid var(--border);" onclick="switchTab('backup', this)"><span class="nav-icon">🔄</span>Migrate / Backup</div>
+        </div>
+
+        <div class="content-area">
+            
+            <div id="dashboard" class="section active">
+                <h1 style="font-size: 24px; font-weight: 700; margin-bottom: 25px;">Live Sandbox Status</h1>
+                <div class="card-grid">
+                    <div class="puffer-card"><h3>Memory Usage</h3><div class="puffer-card-value" id="ramStats" style="color:var(--accent)">-- GB</div></div>
+                    <div class="puffer-card"><h3>Environment</h3><div class="puffer-card-value" id="osStats" style="color:#bf5af2">--</div></div>
+                </div>
+            </div>
+
+            <div id="terminal" class="section">
+                <h1 style="font-size: 24px; font-weight: 700; margin-bottom: 20px;">Native Root Terminal</h1>
+                <div class="puffer-card" style="padding: 10px;">
+                    <div class="terminal-window" id="termBody" onclick="document.getElementById('termInput').focus()">
+                        <div style="color: #888; margin-bottom: 10px;">Connected natively to Sandbox Ubuntu Engine.</div>
+                        <div id="termOutput"></div>
+                        <div class="term-input-row">
+                            <span style="color:var(--accent); font-weight:bold;">root:~#</span>
+                            <input type="text" class="term-input" id="termInput" onkeypress="handleStreamCommand(event)" placeholder="Enter command..." autocomplete="off">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="vps" class="section">
+                <h1 style="font-size: 24px; font-weight: 700; margin-bottom: 20px;">Deploy Native VPS Instance</h1>
+                <div class="puffer-card">
+                    <div class="input-group"><label class="input-label">VPS Instance Name</label><input type="text" id="vpsName" class="input-field" placeholder="John_Node1"></div>
+                    <div class="input-group"><label class="input-label">Ubuntu Username</label><input type="text" id="vpsUser" class="input-field" placeholder="e.g. user1"></div>
+                    
+                    <div style="display: flex; gap: 15px;">
+                        <div class="input-group" style="flex:1;"><label class="input-label">Assigned RAM</label><input type="text" id="vpsRam" class="input-field" value="2GB"></div>
+                        <div class="input-group" style="flex:1;"><label class="input-label">Storage Limit</label><input type="text" id="vpsStorage" class="input-field" value="10GB"></div>
+                    </div>
+                    <button class="btn btn-primary" style="width: 100%; margin-top: 10px;" onclick="createVPS()">🚀 Generate Secure Link</button>
+                </div>
+
+                <div class="puffer-table-container">
+                    <table class="puffer-table" id="vpsTable">
+                        <tr><th>Instance ID</th><th>Assigned Specs</th><th>Status</th><th>SSHX Link (Native)</th><th>Action</th></tr>
+                    </table>
+                </div>
+            </div>
+
+            <div id="hosting" class="section">
+                <h1 style="font-size: 24px; font-weight: 700; margin-bottom: 20px;">Web Hosting Setup</h1>
+                <div class="puffer-card">
+                    <div class="input-group"><label class="input-label">Project Name</label><input type="text" id="projectName" class="input-field" placeholder="my-awesome-site"></div>
+                    
+                    <div class="input-group">
+                        <label class="input-label">Tunnel Provider & Type</label>
+                        <select id="hostProvider" class="input-field" onchange="toggleTunnelOptions()">
+                            <option value="cloudflare">Cloudflare (Free, Random URL)</option>
+                            <option value="cloudflare-existing">Cloudflare (Permanent Token)</option>
+                            <option value="ngrok">Ngrok (Random URL)</option>
+                            <option value="ngrok-existing">Ngrok (Existing Static Domain)</option>
+                        </select>
+                    </div>
+
+                    <div id="ngrokOptions" class="hidden">
+                        <div class="input-group"><label class="input-label">Ngrok Auth Token</label><input type="text" id="ngrokToken" class="input-field" placeholder="Required for Ngrok"></div>
+                        <div class="input-group"><label class="input-label">Static Domain (If Existing)</label><input type="text" id="ngrokDomain" class="input-field" placeholder="e.g. valid-bull-mostly.ngrok-free.app"></div>
+                    </div>
+
+                    <div id="cfOptions" class="hidden">
+                        <div class="input-group"><label class="input-label">Cloudflare Tunnel Token</label><input type="text" id="cfToken" class="input-field" placeholder="eyJhIjoi... (From CF Dashboard)"></div>
+                    </div>
+                    
+                    <div class="input-group"><label class="input-label">HTML / Source Code</label><textarea id="htmlCode" class="input-field" rows="8" placeholder="<h1>Hello World</h1>"></textarea></div>
+                    
+                    <button class="btn btn-primary" style="width: 100%;" onclick="hostWebsite()">🌍 Deploy to Internet</button>
+                </div>
+                
+                <div class="puffer-table-container">
+                    <table class="puffer-table" id="hostTable"><tr><th>Project</th><th>Provider</th><th>Local Port</th><th>Live URL</th></tr></table>
+                </div>
+            </div>
+
+            <div id="backup" class="section">
+                <h1 style="font-size: 24px; font-weight: 700; margin-bottom: 20px;">Backup & Migration Tool</h1>
+                
+                <div class="card-grid">
+                    <div class="puffer-card">
+                        <h3>Export Current Panel</h3>
+                        <p style="font-size:13px; color:var(--text-muted); margin-bottom:15px;">Generate a secure Sinket Key containing your database and environment settings to move to another Sandbox.</p>
+                        <textarea id="exportKey" class="input-field" rows="4" readonly placeholder="Click Generate to create Key..."></textarea>
+                        <div style="display:flex; gap:10px; margin-top:10px;">
+                            <button class="btn btn-primary" style="flex:1;" onclick="generateBackup()">Generate Key</button>
+                            <button class="btn btn-blue" onclick="copyKey()">Copy</button>
+                        </div>
+                    </div>
+
+                    <div class="puffer-card">
+                        <h3>Import & Restore</h3>
+                        <p style="font-size:13px; color:var(--text-muted); margin-bottom:15px;">Paste your Sinket Key from a previous server to restore all users, passwords, and hosted site configurations.</p>
+                        <textarea id="importKey" class="input-field" rows="4" placeholder="Paste your Base64 Sinket Key here..."></textarea>
+                        <button class="btn btn-danger" style="width: 100%; margin-top:10px;" onclick="restoreBackup()">⚠️ Restore & Restart Server</button>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+
+    <script>
+        function toggleMenu() { document.getElementById("sidebar").classList.toggle("open"); }
+        document.querySelector('.content-area').addEventListener('click', () => { document.getElementById("sidebar").classList.remove("open"); });
+
+        function showToast(msg) {
+            const t = document.getElementById("toast"); t.innerText = msg; t.classList.add("show");
+            setTimeout(() => t.classList.remove("show"), 3000);
+        }
+
+        function switchTab(id, el) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            el.classList.add('active');
+            document.getElementById("sidebar").classList.remove("open"); 
+        }
+
+        // Toggle Web Hosting Options
+        function toggleTunnelOptions() {
+            const val = document.getElementById('hostProvider').value;
+            document.getElementById('ngrokOptions').classList.add('hidden');
+            document.getElementById('cfOptions').classList.add('hidden');
+            
+            if (val.includes('ngrok')) document.getElementById('ngrokOptions').classList.remove('hidden');
+            if (val === 'cloudflare-existing') document.getElementById('cfOptions').classList.remove('hidden');
+        }
+
+        async function login() {
+            const res = await fetch('/api/login', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({username: username.value, password: password.value})
+            });
+            const data = await res.json();
+            if(data.success) {
+                document.getElementById('loginScreen').style.display = 'none';
+                showToast("Sandbox Environment Linked!");
+                loadStats();
+                if(data.db) {
+                    data.db.vps.forEach(v => appendVpsTable(v));
+                    data.db.hosting.forEach(h => appendHostTable(h));
+                }
+            } else alert("Invalid Credentials");
+        }
+
+        async function handleStreamCommand(e) {
+            if(e.key === 'Enter') {
+                const cmd = document.getElementById('termInput').value;
+                document.getElementById('termInput').value = '';
+                const outDiv = document.getElementById('termOutput');
+                outDiv.innerHTML += `<div style="color:var(--accent); margin-top:10px;">root:~# ${cmd}</div>`;
+                
+                const streamContainer = document.createElement('div');
+                streamContainer.className = 'terminal-output-stream';
+                outDiv.appendChild(streamContainer);
+                document.getElementById('termBody').scrollTop = document.getElementById('termBody').scrollHeight;
+
+                try {
+                    const response = await fetch('/api/terminal-live', {
+                        method: 'POST', headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ command: cmd })
+                    });
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder("utf-8");
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        streamContainer.innerHTML += decoder.decode(value, { stream: true });
+                        document.getElementById('termBody').scrollTop = document.getElementById('termBody').scrollHeight;
+                    }
+                } catch (err) {
+                    streamContainer.innerHTML += `\nError connecting to backend.`;
+                }
+            }
+        }
+
+        async function createVPS() {
+            showToast("Generating SSHX Secure Link...");
+            const res = await fetch('/api/create-vps', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    vpsName: document.getElementById('vpsName').value,
+                    username: document.getElementById('vpsUser').value, 
+                    ram: document.getElementById('vpsRam').value, 
+                    storage: document.getElementById('vpsStorage').value
+                })
+            });
+            const data = await res.json();
+            if(data.success) {
+                showToast("VPS Session Activated!");
+                appendVpsTable(data.vps);
+            } else showToast(data.message);
+        }
+
+        async function killVps(id, user, buttonEl) {
+            buttonEl.innerText = "Killing...";
+            const res = await fetch('/api/kill-vps', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ id: id, username: user })
+            });
+            const data = await res.json();
+            if(data.success) {
+                showToast(data.message);
+                buttonEl.parentElement.innerHTML = '<span style="color:var(--text-muted)">Terminated</span>';
+            } else {
+                showToast("Failed: " + data.message);
+                buttonEl.innerText = "Kill Session";
+            }
+        }
+
+        async function hostWebsite() {
+            showToast("Tunneling your local port...");
+            let providerType = document.getElementById('hostProvider').value;
+            let isNgrok = providerType.includes('ngrok');
+            
+            const res = await fetch('/api/host', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    projectName: document.getElementById('projectName').value, 
+                    htmlCode: document.getElementById('htmlCode').value, 
+                    provider: isNgrok ? 'ngrok' : 'cloudflare',
+                    ngrokToken: document.getElementById('ngrokToken').value,
+                    staticDomain: providerType === 'ngrok-existing' ? document.getElementById('ngrokDomain').value : null,
+                    cfToken: providerType === 'cloudflare-existing' ? document.getElementById('cfToken').value : null
+                })
+            });
+            const data = await res.json();
+            if(data.success) {
+                showToast("Website is LIVE!");
+                appendHostTable(data.site);
+            } else showToast(data.message);
+        }
+
+        async function loadStats() {
+            const res = await fetch('/api/stats'); const data = await res.json();
+            document.getElementById('ramStats').innerText = `${data.freeMem} / ${data.totalMem} GB`;
+            document.getElementById('osStats').innerText = data.os;
+        }
+
+        // --- BACKUP & RESTORE LOGIC ---
+        async function generateBackup() {
+            const res = await fetch('/api/backup');
+            const data = await res.json();
+            if(data.success) {
+                document.getElementById('exportKey').value = data.key;
+                showToast("Sinket Key Generated!");
+            } else showToast("Error generating key.");
+        }
+
+        function copyKey() {
+            const keyField = document.getElementById('exportKey');
+            keyField.select(); document.execCommand('copy');
+            showToast("Key Copied to Clipboard!");
+        }
+
+        async function restoreBackup() {
+            const key = document.getElementById('importKey').value;
+            if(!key) return showToast("Please paste a valid key.");
+            
+            showToast("Restoring Database... Please wait.");
+            const res = await fetch('/api/restore', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ key: key })
+            });
+            const data = await res.json();
+            showToast(data.message);
+            if(data.success) {
+                setTimeout(() => window.location.reload(), 2500); // Reload after backend restarts
+            }
+        }
+
+        function appendVpsTable(v) {
+            const table = document.getElementById('vpsTable');
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><div style="font-weight:700;">${v.vpsName}</div><div style="color:var(--text-muted); font-size:11px">User: ${v.username}</div></td>
+                <td><span style="color:var(--accent)">${v.ram}</span> / <span style="color:#bf5af2">${v.storage}</span></td>
+                <td style="color: ${v.status === 'Running' ? 'var(--accent)' : 'var(--danger)'}"><b>${v.status}</b></td>
+                <td><a href="${v.link}" target="_blank" class="link-text" onclick="event.stopPropagation(); window.open('${v.link}', '_blank');">${v.link}</a></td>
+                <td>${v.status === 'Running' ? `<button class="btn btn-danger" style="font-size:11px; padding:6px 12px;" onclick="killVps('${v.id}', '${v.username}', this)">Kill Session</button>` : `<span style="color:var(--text-muted)">Terminated</span>`}</td>
+            `;
+            table.appendChild(tr);
+        }
+
+        function appendHostTable(h) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td>${h.projectName}</td><td>${h.provider}</td><td>${h.port}</td><td><a href="${h.url}" target="_blank" class="link-text">${h.url}</a></td>`;
+            document.getElementById('hostTable').appendChild(tr);
+        }
+    </script>
+</body>
+                                                                                                   </html>
